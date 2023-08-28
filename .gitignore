@@ -1,2 +1,4 @@
 checkpoints/
 test*.npy
+test*
+.DS_Store
