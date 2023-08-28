@@ -65,6 +65,10 @@ def main():
         train_accs.append(train_acc)
         valid_accs.append(valid_acc)
 
+        # print(train_loss)
+        # print(valid_loss)
+        # print(valid_acc)
+
         if valid_acc >= best_valid_acc:
             # save the model weights
             np.save(model_name + '.weights.npy', model.weights)
