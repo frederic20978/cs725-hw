@@ -1,4 +1,8 @@
 checkpoints/
 test*.npy
+<<<<<<< HEAD
 test*
+=======
+hw1/.gitignore
+>>>>>>> updates
 .DS_Store
