@@ -1,2 +1,4 @@
 checkpoints/
 test*.npy
+hw1/.gitignore
+.DS_Store
