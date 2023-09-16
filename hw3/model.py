@@ -31,7 +31,7 @@ class NaiveBayes:
 
             mean_x2 = np.mean(X_cls[:, 1])  # MLE for X2
             var_x2 = np.var(X_cls[:, 1],ddof=1)    # MLE for X2
-            self.gaussian_params[cls] = (mean_x1, var_x1, mean_x2, var_x2)
+            self.gaussian_params[cls] = (mean_x1, mean_x2, var_x1, var_x2)
 
             # Bernoulli distribution
             # calculatin mean is same as calculating probability of success as mean=p for bernoulli
@@ -44,7 +44,7 @@ class NaiveBayes:
             b_x5 = np.mean(np.abs(X_cls[:, 4] - median_x5))  # MLE for X5
             median_x6 = np.median(X_cls[:, 5])  # MLE for X6
             b_x6 = np.mean(np.abs(X_cls[:, 5] - median_x6))  # MLE for X6
-            self.laplace_params[cls] = (median_x5, b_x5, median_x6, b_x6)
+            self.laplace_params[cls] = (median_x5,median_x6, b_x5, b_x6)
 
             # Exponential distribution
             lambda_x7 = 1 / np.mean(X_cls[:, 6])  # MLE for X7
@@ -77,7 +77,7 @@ class NaiveBayes:
 
     def calculate_likelihood(self, x, cls):
         # Gaussian distribution
-        mean_x1, var_x1, mean_x2, var_x2 = self.gaussian_params[cls]
+        mean_x1, mean_x2, var_x1, var_x2 = self.gaussian_params[cls]
         gaussian_likelihood_x1 = (1 / np.sqrt(2 * np.pi * var_x1)) * np.exp((-(x[0] - mean_x1) ** 2) / (2 * var_x1))
         gaussian_likelihood_x2 = (1 / np.sqrt(2 * np.pi * var_x2)) * np.exp((-(x[1] - mean_x2) ** 2) / (2 * var_x2))
 
@@ -87,7 +87,7 @@ class NaiveBayes:
         bernoulli_likelihood_x4 = p_x4 ** x[3] * (1 - p_x4) ** (1 - x[3])
 
         # Laplace distribution
-        median_x5, b_x5, median_x6, b_x6 = self.laplace_params[cls]
+        median_x5, median_x6, b_x5, b_x6 = self.laplace_params[cls]
         laplace_likelihood_x5 = (1 / (2 * b_x5)) * np.exp(-np.abs(x[4] - median_x5) / b_x5)
         laplace_likelihood_x6 = (1 / (2 * b_x6)) * np.exp(-np.abs(x[5] - median_x6) / b_x6)
 
@@ -265,6 +265,9 @@ if __name__ == "__main__":
     # Train the model
     model = NaiveBayes()
     model.fit(train_datapoints, train_labels)
+
+    # params = model.getParams()
+    # print(params)
 
     # Make predictions
     train_predictions = model.predict(train_datapoints)
