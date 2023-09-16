@@ -6,84 +6,127 @@ import pickle as pkl
 
 class NaiveBayes:
     def fit(self, X, y):
+        self.unique_classes = np.unique(y)
+        self.num_classes = len(self.unique_classes)
+        
+        self.class_counts = np.zeros(self.num_classes)
+        self.class_priors = {}
+        for i, cls in enumerate(self.unique_classes):
+            class_count = np.sum(y == cls)
+            self.class_counts[i] = class_count
+            self.class_priors[cls] = class_count/ len(y)
 
-        """Start of your code."""
-        """
-        X : np.array of shape (n,10)
-        y : np.array of shape (n,)
-        Create a variable to store number of unique classes in the dataset.
-        Assume Prior for each class to be ratio of number of data points in that class to total number of data points.
-        Fit a distribution for each feature for each class.
-        Store the parameters of the distribution in suitable data structure, for example you could create a class for each distribution and store the parameters in the class object.
-        You can create a separate function for fitting each distribution in its and call it here.
-        """
+        self.gaussian_params = {}
+        self.bernoulli_params = {}
+        self.laplace_params = {}
+        self.exponential_params = {}
+        self.multinomial_params = {}
 
+        for cls in self.unique_classes:
+            X_cls = X[y == cls]
+            
+            # Gaussian distribution
+            mean_x1 = np.mean(X_cls[:, 0])  # MLE for X1
+            var_x1 = np.var(X_cls[:, 0],ddof=1)    # MLE for X1
 
+            mean_x2 = np.mean(X_cls[:, 1])  # MLE for X2
+            var_x2 = np.var(X_cls[:, 1],ddof=1)    # MLE for X2
+            self.gaussian_params[cls] = (mean_x1, var_x1, mean_x2, var_x2)
 
+            # Bernoulli distribution
+            # calculatin mean is same as calculating probability of success as mean=p for bernoulli
+            p_x3 = np.mean(X_cls[:, 2])     # MLE for X3
+            p_x4 = np.mean(X_cls[:, 3])     # MLE for X4
+            self.bernoulli_params[cls] = (p_x3, p_x4)
 
+            # Laplace distribution
+            median_x5 = np.median(X_cls[:, 4])  # MLE for X5
+            b_x5 = np.mean(np.abs(X_cls[:, 4] - median_x5))  # MLE for X5
+            median_x6 = np.median(X_cls[:, 5])  # MLE for X6
+            b_x6 = np.mean(np.abs(X_cls[:, 5] - median_x6))  # MLE for X6
+            self.laplace_params[cls] = (median_x5, b_x5, median_x6, b_x6)
 
+            # Exponential distribution
+            lambda_x7 = 1 / np.mean(X_cls[:, 6])  # MLE for X7
+            lambda_x8 = 1 / np.mean(X_cls[:, 7])  # MLE for X8
+            self.exponential_params[cls] = (lambda_x7, lambda_x8)
 
+            # Multinomial distribution
+            unique_categories, category_counts = np.unique(X_cls[:, 8], return_counts=True)  # For X9
+            p_x9_mle = category_counts / len(X_cls[:, 8])
+            unique_categories, category_counts = np.unique(X_cls[:, 9], return_counts=True)  # For X10
+            p_x10_mle = category_counts / len(X_cls[:, 9])
+            self.multinomial_params[cls] = (p_x9_mle, p_x10_mle)
 
-
-
-        """End of your code."""
 
     def predict(self, X):
-        """Start of your code."""
-        """
-        X : np.array of shape (n,10)
+        predictions = []
+        for x in X:
+            posteriors = []
 
-        Calculate the posterior probability using the parameters of the distribution calculated in fit function.
-        Take care of underflow errors suitably (Hint: Take log of probabilities)
-        Return an np.array() of predictions where predictions[i] is the predicted class for ith data point in X.
-        It is implied that prediction[i] is the class that maximizes posterior probability for ith data point in X.
-        You can create a separate function for calculating posterior probability and call it here.
-        """
+            for cls in self.unique_classes:
+                prior = self.class_priors[cls]
+                likelihood = self.calculate_likelihood(x, cls)
+                posterior = prior * likelihood
+                posteriors.append(posterior)
 
+            predicted_class = np.argmax(posteriors)
+            predictions.append(predicted_class)
 
+        return np.array(predictions)
 
+    def calculate_likelihood(self, x, cls):
+        # Gaussian distribution
+        mean_x1, var_x1, mean_x2, var_x2 = self.gaussian_params[cls]
+        gaussian_likelihood_x1 = (1 / np.sqrt(2 * np.pi * var_x1)) * np.exp((-(x[0] - mean_x1) ** 2) / (2 * var_x1))
+        gaussian_likelihood_x2 = (1 / np.sqrt(2 * np.pi * var_x2)) * np.exp((-(x[1] - mean_x2) ** 2) / (2 * var_x2))
 
+        # Bernoulli distribution
+        p_x3, p_x4 = self.bernoulli_params[cls]
+        bernoulli_likelihood_x3 = p_x3 ** x[2] * (1 - p_x3) ** (1 - x[2])
+        bernoulli_likelihood_x4 = p_x4 ** x[3] * (1 - p_x4) ** (1 - x[3])
 
+        # Laplace distribution
+        median_x5, b_x5, median_x6, b_x6 = self.laplace_params[cls]
+        laplace_likelihood_x5 = (1 / (2 * b_x5)) * np.exp(-np.abs(x[4] - median_x5) / b_x5)
+        laplace_likelihood_x6 = (1 / (2 * b_x6)) * np.exp(-np.abs(x[5] - median_x6) / b_x6)
 
+        # Exponential distribution
+        lambda_x7, lambda_x8 = self.exponential_params[cls]
+        exponential_likelihood_x7 = lambda_x7 * np.exp(-lambda_x7 * x[6])
+        exponential_likelihood_x8 = lambda_x8 * np.exp(-lambda_x8 * x[7])
 
-        """End of your code."""
+        # Multinomial distribution
+        p_x9, p_x10 = self.multinomial_params[cls]
+        multinomial_likelihood_x9 = p_x9[int(x[8])]
+        multinomial_likelihood_x10 = p_x10[int(x[9])]
+
+        return (
+            gaussian_likelihood_x1 * gaussian_likelihood_x2 *
+            bernoulli_likelihood_x3 * bernoulli_likelihood_x4 *
+            laplace_likelihood_x5 * laplace_likelihood_x6 *
+            exponential_likelihood_x7 * exponential_likelihood_x8 *
+            multinomial_likelihood_x9 * multinomial_likelihood_x10
+        )
 
     def getParams(self):
-        """
-        Return your calculated priors and parameters for all the classes in the form of dictionary that will be used for evaluation
-        Please don't change the dictionary names
-        Here is what the output would look like:
-        priors = {"0":0.2,"1":0.3,"2":0.5}
-        gaussian = {"0":[mean_x1,mean_x2,var_x1,var_x2],"1":[mean_x1,mean_x2,var_x1,var_x2],"2":[mean_x1,mean_x2,var_x1,var_x2]}
-        bernoulli = {"0":[p_x3,p_x4],"1":[p_x3,p_x4],"2":[p_x3,p_x4]}
-        laplace = {"0":[mu_x5,mu_x6,b_x5,b_x6],"1":[mu_x5,mu_x6,b_x5,b_x6],"2":[mu_x5,mu_x6,b_x5,b_x6]}
-        exponential = {"0":[lambda_x7,lambda_x8],"1":[lambda_x7,lambda_x8],"2":[lambda_x7,lambda_x8]}
-        multinomial = {"0":[[p0_x9,...,p4_x9],[p0_x10,...,p7_x10]],"1":[[p0_x9,...,p4_x9],[p0_x10,...,p7_x10]],"2":[[p0_x9,...,p4_x9],[p0_x10,...,p7_x10]]}
-        """
-        priors = {}
-        guassian = {}
-        bernoulli = {}
-        laplace = {}
-        exponential = {}
-        multinomial = {}
+        priors = {str(cls): self.class_priors[cls] for cls in self.unique_classes}
+        gaussian = {str(cls): list(self.gaussian_params[cls]) for cls in self.unique_classes}
+        bernoulli = {str(cls): list(self.bernoulli_params[cls]) for cls in self.unique_classes}
+        laplace = {str(cls): list(self.laplace_params[cls]) for cls in self.unique_classes}
+        exponential = {str(cls): list(self.exponential_params[cls]) for cls in self.unique_classes}
+        multinomial = {str(cls): list(self.multinomial_params[cls]) for cls in self.unique_classes}
 
-        """Start your code"""
-
-
-
-
-        
-        """End your code"""
-        return (priors, guassian, bernoulli, laplace, exponential, multinomial)        
-
-
+        return (priors, gaussian, bernoulli, laplace, exponential, multinomial)
+    
+    
 def save_model(model,filename="model.pkl"):
     """
 
     You are not required to modify this part of the code.
 
     """
-    file = open("model.pkl","wb")
+    file = open(filename,"wb")
     pkl.dump(model,file)
     file.close()
 
@@ -137,10 +180,9 @@ def net_f1score(predictions, true_labels):
             float: The precision of the predictions.
         """
         """Start of your code."""
-        
-
-
-
+        true_positives = np.sum((predictions == label) & (true_labels == label))
+        false_positives = np.sum((predictions == label) & (true_labels != label))
+        return true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0.0
         
         """End of your code."""
         
@@ -158,10 +200,10 @@ def net_f1score(predictions, true_labels):
         """
         """Start of your code."""
         
-
-
-
-
+        true_positives = np.sum((predictions == label) & (true_labels == label))
+        false_negatives = np.sum((predictions != label) & (true_labels == label))
+        return true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0.0
+    
         """End of your code."""
         
 
@@ -178,12 +220,11 @@ def net_f1score(predictions, true_labels):
 
         """Start of your code."""
         
-
-
-
-
+        prec = precision(predictions, true_labels, label)
+        rec = recall(predictions, true_labels, label)
+        return (2 * prec * rec) / (prec + rec) if (prec + rec) > 0 else 0.0
+    
         """End of your code."""
-        return f1
     
 
     f1s = []
@@ -248,4 +289,3 @@ if __name__ == "__main__":
 
     # Visualize the predictions
     # visualise(validation_datapoints, validation_predictions, "validation_predictions.png")
-
